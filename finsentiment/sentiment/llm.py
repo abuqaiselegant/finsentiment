@@ -1,8 +1,8 @@
-"""LLM sentiment provider for OpenAI and DeepSeek (OpenAI-compatible) models.
+"""Sentiment from OpenAI and DeepSeek models.
 
-Covers gpt-4o-mini, gpt-4.1-mini, gpt-5 (provider ``openai``) and
-deepseek-chat (provider ``deepseek``). API keys are read from the environment;
-they are never hard-coded.
+Covers gpt-4o-mini, gpt-4.1-mini and gpt-5 (OpenAI) plus deepseek-chat. DeepSeek
+speaks the OpenAI API, so the same client handles both — only the base URL and
+API key differ. Keys come from the environment.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import time
 from ..config import require_key
 from .base import SentimentProvider, build_prompt, parse_output
 
-# provider -> (env var, base_url)
+# provider -> (env var holding the key, base_url or None for OpenAI's default)
 _PROVIDERS = {
     "openai": ("OPENAI_API_KEY", None),
     "deepseek": ("DEEPSEEK_API_KEY", "https://api.deepseek.com"),
@@ -19,7 +19,7 @@ _PROVIDERS = {
 
 
 class LLMProvider(SentimentProvider):
-    """Zero-shot sentiment classification via a chat-completions endpoint."""
+    """Label one article at a time with a chat model."""
 
     def __init__(self, *, name: str, model: str, provider: str = "openai",
                  max_words: int = 500, temperature: float | None = 0.3,
@@ -27,7 +27,7 @@ class LLMProvider(SentimentProvider):
         super().__init__(name)
         if provider not in _PROVIDERS:
             raise ValueError(f"Unknown LLM provider: {provider}")
-        from openai import OpenAI  # imported lazily so the dep is optional
+        from openai import OpenAI  # import here so openai is only needed if used
 
         env_var, base_url = _PROVIDERS[provider]
         self.model = model
@@ -46,25 +46,26 @@ class LLMProvider(SentimentProvider):
                 {"role": "user", "content": build_prompt(text)},
             ],
         }
-        # gpt-5 is called without an explicit temperature.
+        # gpt-5 only takes the default temperature, so we leave it off there
         if self.temperature is not None:
             kwargs["temperature"] = self.temperature
         try:
             resp = self.client.chat.completions.create(**kwargs)
             out = resp.choices[0].message.content.strip()
-        except Exception as exc:  # noqa: BLE001 - surfaced, then skipped
+        except Exception as exc:  # one bad article shouldn't kill the whole run
             print(f"[{self.name}] error: {exc}")
             return None, None
         finally:
+            # be nice to the rate limit
             if self.throttle_s:
                 time.sleep(self.throttle_s)
         return parse_output(out)
 
     def embed(self, text: str, model: str = "text-embedding-3-small"):
-        """Return an embedding vector (OpenAI ``text-embedding-3-small``)."""
+        """Get an embedding vector for the text (OpenAI text-embedding-3-small)."""
         try:
             resp = self.client.embeddings.create(model=model, input=text)
             return resp.data[0].embedding
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             print(f"[{self.name}] embedding error: {exc}")
             return None

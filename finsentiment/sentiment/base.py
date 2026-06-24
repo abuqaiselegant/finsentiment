@@ -1,4 +1,4 @@
-"""Shared sentiment interface, prompt, output parsing and checkpointing."""
+"""Bits every provider shares: the prompt, reply parsing, and the run loop."""
 from __future__ import annotations
 
 import abc
@@ -27,7 +27,10 @@ def build_prompt(text: str) -> str:
 
 
 def parse_output(output: str | None) -> tuple[str | None, float | None]:
-    """Parse the strict two-line model response into (sentiment, confidence)."""
+    """Pull (sentiment, confidence) out of the model's two-line reply.
+
+    Returns (None, None) if the reply doesn't look like we asked.
+    """
     if not output:
         return None, None
     try:
@@ -42,9 +45,9 @@ def parse_output(output: str | None) -> tuple[str | None, float | None]:
 
 
 class SentimentProvider(abc.ABC):
-    """Base class. Subclasses implement :meth:`classify_one`."""
+    """Common interface; each backend just implements classify_one."""
 
-    #: column prefix used for checkpoint files, e.g. ``gpt4o_mini``
+    #: used to name the output columns, e.g. gpt4o_mini_sentiment
     name: str
 
     def __init__(self, name: str):
@@ -52,7 +55,7 @@ class SentimentProvider(abc.ABC):
 
     @abc.abstractmethod
     def classify_one(self, text: str) -> tuple[str | None, float | None]:
-        """Return (sentiment_label, confidence) for a single article."""
+        """One article in, (label, confidence) out."""
 
     def classify_frame(
         self,
@@ -61,10 +64,10 @@ class SentimentProvider(abc.ABC):
         checkpoint_path: str | Path | None = None,
         checkpoint_every: int = 50,
     ) -> pd.DataFrame:
-        """Classify a column of texts, optionally checkpointing to CSV.
+        """Run over a column of articles, label by label.
 
-        Returns a DataFrame with ``sentiment`` / ``sentiment_confidence`` /
-        ``sentiment_num`` aligned by position to ``texts``.
+        With a checkpoint_path it saves progress to CSV every checkpoint_every
+        rows, so a long (and, for LLMs, paid) run can pick up where it stopped.
         """
         sent_col, conf_col = f"{self.name}_sentiment", f"{self.name}_confidence"
         results: list[tuple[str | None, float | None]] = []
@@ -79,7 +82,7 @@ class SentimentProvider(abc.ABC):
 
 
 def load_sentiment_file(path: str | Path) -> pd.DataFrame:
-    """Load a cached ``*_sentiments.csv`` and standardise its column names."""
+    """Read a cached *_sentiments.csv and rename its columns to the standard ones."""
     df = pd.read_csv(path)
     sent_col = next(c for c in df.columns if c.endswith("_sentiment"))
     conf_col = next(c for c in df.columns if c.endswith("_confidence"))
@@ -87,6 +90,7 @@ def load_sentiment_file(path: str | Path) -> pd.DataFrame:
 
 
 def _standardise(df: pd.DataFrame, sent_col: str, conf_col: str) -> pd.DataFrame:
+    """Rename to sentiment/sentiment_confidence and add the numeric column."""
     out = pd.DataFrame({
         "sentiment": df[sent_col],
         "sentiment_confidence": df[conf_col],

@@ -17,7 +17,7 @@ from finsentiment.sentiment import get_provider
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--model", required=True, help="catalog name, e.g. gpt4o_mini / finbert")
+    ap.add_argument("--model", required=True, help="model name from config, e.g. gpt4o_mini / finbert")
     ap.add_argument("--config", default=None)
     ap.add_argument("--limit", type=int, default=None, help="only classify the first N rows")
     args = ap.parse_args()
