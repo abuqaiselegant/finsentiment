@@ -1,8 +1,8 @@
-"""Train/test splitting strategies and the RF / XGBoost / LightGBM models.
+"""Train/test splits and the three classifiers (RF, XGBoost, LightGBM).
 
-XGBoost requires non-negative class labels, so triggers ``{-1,0,1}`` are
-remapped to ``{0,1,2}`` for training and mapped back for reporting. The
-remapping is encapsulated here so callers always work in trigger space.
+Our labels are -1/0/1, but XGBoost only accepts 0..n labels, so we shift them to
+0/1/2 to train and shift back to report. That bookkeeping is kept here so the
+rest of the code only ever deals with -1/0/1.
 """
 from __future__ import annotations
 
@@ -13,9 +13,8 @@ LABEL_MAP = {-1: 0, 0: 1, 1: 2}
 INV_LABEL_MAP = {0: -1, 1: 0, 2: 1}
 
 
-# --------------------------------------------------------------------------- #
 # Splits
-# --------------------------------------------------------------------------- #
+
 def split_train_test(
     df: pd.DataFrame,
     feature_cols: list[str],
@@ -26,13 +25,13 @@ def split_train_test(
     random_state: int = 42,
     embargo_days: int = 1,
 ):
-    """Split into (X_train, X_test, y_train, y_test) by the chosen strategy.
+    """Return X_train, X_test, y_train, y_test for the chosen split.
 
-    strategy:
-      - ``random``  : stratified random split (note: optimistic for time series).
-      - ``time``    : chronological — earliest (1-test_size) train, latest test.
-      - ``grouped`` : random split over *dates*, with an embargo gap between the
-                      train/test date ranges to limit near-day leakage.
+    random   - plain stratified split. Easy, but leaks across time so it tends
+               to look better than it should.
+    time     - oldest rows train, newest rows test. The honest default.
+    grouped  - split on whole dates, with an embargo gap so days right next to a
+               test day don't sneak into training.
     """
     data = df.dropna(subset=[target_col]).copy()
     data[target_col] = data[target_col].astype(int)
@@ -67,8 +66,8 @@ def _grouped_split(data, X, y, *, test_size, random_state, embargo_days):
     n_test = int(test_size * len(unique))
     test_dates = set(rng.choice(unique, size=n_test, replace=False))
 
+    # drop training days that sit within embargo_days of any test day
     if embargo_days:
-        embargo = pd.Timedelta(days=embargo_days)
         test_arr = np.array(sorted(test_dates))
         embargoed = {d for d in unique
                      if any(abs((d - td) / np.timedelta64(1, "D")) <= embargo_days
@@ -81,9 +80,8 @@ def _grouped_split(data, X, y, *, test_size, random_state, embargo_days):
     return X[train_mask], X[test_mask], y[train_mask], y[test_mask]
 
 
-# --------------------------------------------------------------------------- #
 # Models
-# --------------------------------------------------------------------------- #
+
 def train_random_forest(X, y, **params):
     from sklearn.ensemble import RandomForestClassifier
     model = RandomForestClassifier(**params)
@@ -92,7 +90,7 @@ def train_random_forest(X, y, **params):
 
 
 def train_xgboost(X, y, **params):
-    """Train XGBoost in remapped label space; stores ``label_map`` on the model."""
+    """Train XGBoost on the shifted 0/1/2 labels and remember the mapping."""
     from xgboost import XGBClassifier
     y_mapped = y.map(LABEL_MAP).astype(int)
     model = XGBClassifier(
@@ -119,14 +117,14 @@ TRAINERS = {
 
 
 def train(name: str, X, y, cfg):
-    """Train the named classifier using hyper-parameters from config."""
+    """Train one classifier by name, with hyper-parameters from config."""
     params = dict(cfg.models.get(name, {}))
     return TRAINERS[name](X, y, **params)
 
 
 def predict(model, X) -> np.ndarray:
-    """Predict in trigger space ``{-1,0,1}`` regardless of the backend."""
+    """Predict and always hand back -1/0/1, even for XGBoost."""
     y_pred = model.predict(X)
-    if getattr(model, "label_map", None):  # XGBoost trained in mapped space
+    if getattr(model, "label_map", None):  # XGBoost predicts in 0/1/2 space
         y_pred = pd.Series(y_pred).map(INV_LABEL_MAP).to_numpy()
     return y_pred

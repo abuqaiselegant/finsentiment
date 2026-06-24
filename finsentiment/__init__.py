@@ -18,9 +18,9 @@ import logging
 
 
 def get_logger(name: str = "finsentiment") -> logging.Logger:
-    """Return a package logger with a single stream handler (idempotent)."""
+    """Get a logger that prints to the console. Safe to call more than once."""
     logger = logging.getLogger(name)
-    if not logger.handlers:
+    if not logger.handlers:  # only add the handler the first time
         handler = logging.StreamHandler()
         handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s",
                                                datefmt="%H:%M:%S"))

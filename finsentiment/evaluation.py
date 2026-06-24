@@ -1,4 +1,4 @@
-"""Predictive metrics, reporting, and the Sharpe-ratio backtest."""
+"""Scoring: classification metrics and a simple trading backtest."""
 from __future__ import annotations
 
 import numpy as np
@@ -7,11 +7,12 @@ import pandas as pd
 from .modeling import predict
 
 
-# --------------------------------------------------------------------------- #
-# Classification metrics
-# --------------------------------------------------------------------------- #
 def evaluate(model, X_test, y_test, *, feature_names=None, target_name="", verbose=True) -> dict:
-    """Compute accuracy + macro-F1 (and optionally print a full report)."""
+    """Score a model and return accuracy + macro-F1.
+
+    Macro-F1 matters here because most days are flat, so plain accuracy can look
+    good while the up/down classes are ignored.
+    """
     from sklearn.metrics import (accuracy_score, classification_report,
                                  confusion_matrix, f1_score)
 
@@ -32,16 +33,13 @@ def evaluate(model, X_test, y_test, *, feature_names=None, target_name="", verbo
     return {"target": target_name, "accuracy": acc, "macro_f1": f1m}
 
 
-# --------------------------------------------------------------------------- #
-# Economic evaluation
-# --------------------------------------------------------------------------- #
 def backtest_sharpe(model, X_test, y_test, df_test, *, return_col="return_1d",
                     target_name="") -> dict:
-    """Long/short backtest from predicted signals; returns Sharpe + summary.
+    """Trade the predictions and report the Sharpe ratio.
 
-    Strategy: position = predicted trigger in {-1,0,1}; period return =
-    position * realised ``return_col``. Sharpe is the per-period mean/std of
-    strategy returns (un-annualised, no transaction costs — see docs).
+    Go long on an up call, short on a down call, sit out on flat, then earn that
+    day's return. Sharpe is just mean/std of those returns — not annualised and
+    no trading costs, so read it as signal quality, not a real strategy.
     """
     y_pred = predict(model, X_test)
     res = df_test.loc[y_test.index].copy()

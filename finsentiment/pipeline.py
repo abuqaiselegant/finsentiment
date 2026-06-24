@@ -1,7 +1,7 @@
-"""High-level orchestration: assemble dataset -> train -> evaluate.
+"""Glue that runs the whole thing: build the dataset, train, score.
 
-Ties the modules together so a whole experiment grid (sentiment model x
-classifier x horizon) can be run from one call or the ``train`` script.
+Lets you run one model or the full grid (every sentiment model x classifier x
+horizon) from a single call or the train script.
 """
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ log = get_logger(__name__)
 
 
 def assemble_dataset(cfg, model_name: str) -> pd.DataFrame:
-    """Merge the interim master table with a model's cached sentiment labels.
+    """Attach a model's cached sentiment labels to the master table.
 
-    Sentiment files align to ``merged_final`` by row order, so they are attached
-    positionally then trimmed to a common length.
+    The sentiment file lines up with merged_final row by row, so we stitch them
+    together by position and trim to whichever is shorter.
     """
     merged = data_mod.load_merged_table(cfg)
 
@@ -43,7 +43,7 @@ def assemble_dataset(cfg, model_name: str) -> pd.DataFrame:
 
 def run_experiment(cfg, model_name: str, classifier: str, *, with_lags: bool = False,
                    verbose: bool = True) -> list[dict]:
-    """Train + evaluate one (sentiment model, classifier) across all horizons."""
+    """Train and score one sentiment-model/classifier pair at every horizon."""
     df = assemble_dataset(cfg, model_name)
 
     if with_lags:
@@ -80,7 +80,7 @@ def run_experiment(cfg, model_name: str, classifier: str, *, with_lags: bool = F
 
 def run_grid(cfg, model_names: list[str], classifiers: list[str], *,
              verbose: bool = False) -> pd.DataFrame:
-    """Run the full grid and return a tidy results table."""
+    """Run every model x classifier combination and collect the scores."""
     rows = []
     for m in model_names:
         for clf in classifiers:
