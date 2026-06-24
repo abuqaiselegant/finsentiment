@@ -2,8 +2,7 @@
 
 ### Exploring Large Language Models for Sentiment-Driven Trading Using Financial News Insights
 
-<!-- Replace OWNER/REPO with your GitHub path so the CI badge resolves. -->
-[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
+[![CI](https://github.com/abuqaiselegant/finsentiment/actions/workflows/ci.yml/badge.svg)](https://github.com/abuqaiselegant/finsentiment/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
