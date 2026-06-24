@@ -1,8 +1,7 @@
-"""Configuration loading and API-key resolution.
+"""Loads config.yaml and reads API keys from the environment.
 
-Loads ``config.yaml`` into a lightweight attribute-accessible mapping and
-reads secrets from the environment (optionally via a local ``.env`` file).
-No secret ever lives in a tracked file.
+Secrets come from environment variables (or a local .env file) and never from
+a file that gets committed.
 """
 from __future__ import annotations
 
@@ -12,36 +11,36 @@ from typing import Any
 
 import yaml
 
-try:  # optional, but recommended for local dev
+try:
     from dotenv import load_dotenv
-except ImportError:  # pragma: no cover
+except ImportError:  # dotenv is optional; fall back to a no-op
     def load_dotenv(*_args, **_kwargs):  # type: ignore
         return False
 
-# Repository root = parent of the finsentiment package directory.
+# repo root is one level up from this package
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = ROOT / "config.yaml"
 
 
 class Config(dict):
-    """Dict that also supports attribute access and nested resolution.
+    """A dict you can also read with dot notation.
 
-    ``cfg.market["ticker"]`` and ``cfg["market"]["ticker"]`` both work, and
-    nested dicts are wrapped so ``cfg.split.strategy`` works too.
+    So cfg.market.ticker works as well as cfg["market"]["ticker"]. Nested dicts
+    are wrapped on access so the dot style keeps working all the way down.
     """
 
     def __getattr__(self, name: str) -> Any:
         try:
             value = self[name]
-        except KeyError as exc:  # pragma: no cover
+        except KeyError as exc:
             raise AttributeError(name) from exc
         return Config(value) if isinstance(value, dict) else value
 
     def path(self, key: str) -> Path:
-        """Resolve a configured path against the repo root.
+        """Return an absolute path for a configured key.
 
-        Honours ``use_sample``: when enabled, keys present in ``sample_paths``
-        transparently point at the committed sample slices.
+        If use_sample is on and we have a sample file for this key, point at the
+        sample instead of the full dataset.
         """
         if self.get("use_sample") and key in self.get("sample_paths", {}):
             rel = self["sample_paths"][key]
@@ -52,7 +51,7 @@ class Config(dict):
 
 
 def load_config(path: str | os.PathLike | None = None) -> Config:
-    """Load YAML config and pull a local ``.env`` into the environment."""
+    """Read the YAML config and load any local .env into the environment."""
     load_dotenv(ROOT / ".env")
     cfg_path = Path(path) if path else DEFAULT_CONFIG_PATH
     with open(cfg_path, "r", encoding="utf-8") as fh:
@@ -61,7 +60,7 @@ def load_config(path: str | os.PathLike | None = None) -> Config:
 
 
 def require_key(env_var: str) -> str:
-    """Fetch a required secret from the environment or fail loudly."""
+    """Read an API key from the environment, or raise if it isn't set."""
     key = os.environ.get(env_var)
     if not key:
         raise RuntimeError(
