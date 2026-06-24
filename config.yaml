@@ -11,7 +11,7 @@ paths:
   merged:          data/interim/merged_final.csv    # article x price master table (pre-sentiment)
   sentiment_dir:   data/processed/sentiment         # <model>_sentiments.csv  (label, confidence)
   embeddings_dir:  data/processed/embeddings        # <model>_embeddings.csv  (stringified vectors)
-  results_dir:     results
+  results_dir:     results                          # metrics.csv + any saved artifacts (git-ignored)
 
 # Use the committed sample slices instead of the full local datasets.
 # Handy for a quick end-to-end smoke test on a clone.
