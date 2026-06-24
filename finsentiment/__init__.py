@@ -27,3 +27,6 @@ def get_logger(name: str = "finsentiment") -> logging.Logger:
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
     return logger
+
+
+__all__ = ["__version__", "get_logger"]
