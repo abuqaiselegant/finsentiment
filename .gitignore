@@ -1,0 +1,49 @@
+# --- Secrets ---
+.env
+*.key
+
+# --- Data ---
+# Real/large datasets stay local. Only the small, committed slices in
+# data/sample/ are tracked (see README "Data" section). .gitkeep files
+# preserve the empty directory structure on a fresh clone.
+/data/raw/*
+/data/interim/*
+/data/processed/sentiment/*
+/data/processed/embeddings/*
+!**/.gitkeep
+
+# --- Local-only working docs ---
+BUILD_LOG.md
+
+# --- Exploratory / not required in version control ---
+# Original dissertation notebooks (large embedded outputs) are kept locally,
+# not committed — the reusable package in finsentiment/ is the showcase.
+notebooks/
+*.ipynb
+*.pdf
+scratch/
+scratchpad/
+
+# --- Generated artifacts ---
+/results/
+/outputs/
+*.pkl
+*.joblib
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# --- OS / editor ---
+.DS_Store
+.vscode/
+.idea/

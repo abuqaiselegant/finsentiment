@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software or its findings, please cite it as below."
+title: "Exploring Large Language Models for Sentiment-Driven Trading Using Financial News Insights"
+authors:
+  - family-names: Qais
+    given-names: Abu
+type: software
+license: MIT
+year: 2025
+keywords:
+  - large language models
+  - financial sentiment analysis
+  - stock market prediction
+  - algorithmic trading
+  - FinBERT
+  - GPT
+  - DeepSeek

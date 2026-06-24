@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finsentiment"
+version = "1.0.0"
+description = "LLM-driven financial-news sentiment features for short-horizon S&P 500 prediction."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Abu Qais" }]
+license = { text = "MIT" }
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "scikit-learn>=1.3",
+    "xgboost>=2.0",
+    "lightgbm>=4.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+sentiment = ["transformers>=4.40", "torch>=2.0", "openai>=1.30"]
+data = ["yfinance>=0.2.40"]
+analysis = ["matplotlib>=3.7", "seaborn>=0.12", "shap>=0.44"]
+
+[tool.setuptools]
+packages = ["finsentiment", "finsentiment.sentiment"]
