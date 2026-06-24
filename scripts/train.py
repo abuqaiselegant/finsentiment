@@ -11,6 +11,7 @@
     python scripts/train.py --sample --models gpt4o_mini --classifiers random_forest
 """
 import argparse
+from pathlib import Path
 
 from finsentiment.config import load_config
 from finsentiment.pipeline import run_grid
@@ -39,8 +40,8 @@ def main():
 
     results = run_grid(cfg, args.models, args.classifiers, verbose=args.verbose)
 
-    out = args.out or (cfg.path("results_dir") / "metrics.csv")
-    out.parent.mkdir(parents=True, exist_ok=True) if hasattr(out, "parent") else None
+    out = Path(args.out) if args.out else cfg.path("results_dir") / "metrics.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(out, index=False)
     print("\n=== Summary (accuracy / macro_f1) ===")
     print(results.to_string(index=False))
